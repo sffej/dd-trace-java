@@ -139,7 +139,7 @@ public class SpanDecorationProbe extends ProbeDefinition {
       ClassNode classNode,
       MethodNode methodNode,
       List<DiagnosticMessage> diagnostics,
-      List<String> probeIds) {
+      List<ProbeId> probeIds) {
     return new CapturedContextInstrumentor(
             this, classLoader, classNode, methodNode, diagnostics, probeIds, false, Limits.DEFAULT)
         .instrument();
@@ -156,7 +156,6 @@ public class SpanDecorationProbe extends ProbeDefinition {
             continue;
           }
         } catch (EvaluationException ex) {
-          LOGGER.debug("Evaluation error: ", ex);
           status.addError(new EvaluationError(ex.getExpr(), ex.getMessage()));
           continue;
         }
@@ -195,7 +194,9 @@ public class SpanDecorationProbe extends ProbeDefinition {
       CapturedContext exitContext,
       List<CapturedContext.CapturedThrowable> caughtExceptions) {
     CapturedContext.Status status =
-        evaluateAt == MethodLocation.EXIT ? exitContext.getStatus(id) : entryContext.getStatus(id);
+        evaluateAt == MethodLocation.EXIT
+            ? exitContext.getStatus(probeId.getEncodedId())
+            : entryContext.getStatus(probeId.getEncodedId());
     if (status == null) {
       return;
     }
@@ -206,7 +207,7 @@ public class SpanDecorationProbe extends ProbeDefinition {
 
   @Override
   public void commit(CapturedContext lineContext, int line) {
-    CapturedContext.Status status = lineContext.getStatus(id);
+    CapturedContext.Status status = lineContext.getStatus(probeId.getEncodedId());
     if (status == null) {
       return;
     }
@@ -236,6 +237,7 @@ public class SpanDecorationProbe extends ProbeDefinition {
     for (Pair<String, String> tag : tagsToDecorate) {
       agentSpan.setTag(tag.getLeft(), tag.getRight());
     }
+    DebuggerAgent.getSink().getProbeStatusSink().addEmitting(probeId);
   }
 
   private void handleEvaluationErrors(SpanDecorationStatus status) {

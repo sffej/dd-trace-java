@@ -7,6 +7,7 @@ import static java.util.Arrays.asList;
 import java.util.BitSet;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 public final class ConfigDefaults {
@@ -117,6 +118,8 @@ public final class ConfigDefaults {
   public static final int DEFAULT_IAST_MAX_RANGE_COUNT = 10;
   static final boolean DEFAULT_IAST_STACKTRACE_LEAK_SUPPRESS = false;
 
+  static final boolean DEFAULT_IAST_HARDCODED_SECRET_ENABLED = true;
+
   static final int DEFAULT_IAST_TRUNCATION_MAX_VALUE_LENGTH = 250;
   public static final boolean DEFAULT_IAST_DEDUPLICATION_ENABLED = true;
 
@@ -125,7 +128,7 @@ public final class ConfigDefaults {
   static final boolean DEFAULT_CIVISIBILITY_ENABLED = false;
   static final boolean DEFAULT_CIVISIBILITY_AGENTLESS_ENABLED = false;
   static final boolean DEFAULT_CIVISIBILITY_SOURCE_DATA_ENABLED = true;
-  static final boolean DEFAULT_CIVISIBILITY_SOURCE_DATA_ROOT_CHECK_ENABLED = true;
+  static final boolean DEFAULT_CIVISIBILITY_SOURCE_DATA_ROOT_CHECK_ENABLED = false;
   static final boolean DEFAULT_CIVISIBILITY_BUILD_INSTRUMENTATION_ENABLED = true;
   static final boolean DEFAULT_CIVISIBILITY_AUTO_CONFIGURATION_ENABLED = true;
   static final boolean DEFAULT_CIVISIBILITY_COMPILER_PLUGIN_AUTO_CONFIGURATION_ENABLED = true;
@@ -141,6 +144,8 @@ public final class ConfigDefaults {
   static final String DEFAULT_CIVISIBILITY_GIT_REMOTE_NAME = "origin";
   static final String DEFAULT_CIVISIBILITY_SIGNAL_SERVER_HOST = "127.0.0.1";
   static final int DEFAULT_CIVISIBILITY_SIGNAL_SERVER_PORT = 0;
+  static final List<String> DEFAULT_CIVISIBILITY_RESOURCE_FOLDER_NAMES =
+      asList("/resources/", "/java/", "/groovy/", "/kotlin/", "/scala/");
 
   static final boolean DEFAULT_REMOTE_CONFIG_ENABLED = true;
   static final boolean DEFAULT_REMOTE_CONFIG_INTEGRITY_CHECK_ENABLED = false;
@@ -183,6 +188,7 @@ public final class ConfigDefaults {
   static final int DEFAULT_CWS_TLS_REFRESH = 5000;
 
   static final boolean DEFAULT_DATA_STREAMS_ENABLED = false;
+  static final int DEFAULT_DATA_STREAMS_BUCKET_DURATION = 10; // seconds
 
   static final int DEFAULT_RESOLVER_RESET_INTERVAL = 300; // seconds
 
@@ -202,7 +208,7 @@ public final class ConfigDefaults {
 
   static final boolean DEFAULT_TRACE_HTTP_RESOURCE_REMOVE_TRAILING_SLASH = false;
   static final boolean DEFAULT_TRACE_LONG_RUNNING_ENABLED = false;
-  static final long DEFAULT_TRACE_LONG_RUNNING_FLUSH_INTERVAL = 300; // seconds -> 5 minutes
+  static final long DEFAULT_TRACE_LONG_RUNNING_FLUSH_INTERVAL = 120; // seconds -> 2 minutes
 
   static final float DEFAULT_TRACE_FLUSH_INTERVAL = 1;
 

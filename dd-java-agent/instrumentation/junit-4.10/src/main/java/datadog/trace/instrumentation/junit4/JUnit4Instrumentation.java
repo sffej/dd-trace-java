@@ -52,8 +52,8 @@ public class JUnit4Instrumentation extends Instrumenter.CiVisibility
   }
 
   @Override
-  public void adviceTransformations(AdviceTransformation transformation) {
-    transformation.applyAdvice(
+  public void methodAdvice(MethodTransformer transformer) {
+    transformer.applyAdvice(
         named("run").and(takesArgument(0, named("org.junit.runner.notification.RunNotifier"))),
         JUnit4Instrumentation.class.getName() + "$JUnit4Advice");
   }
@@ -64,7 +64,8 @@ public class JUnit4Instrumentation extends Instrumenter.CiVisibility
         @Advice.This final Runner runner, @Advice.Argument(0) final RunNotifier runNotifier) {
       String runnerClassName = runner.getClass().getName();
       if ("datadog.trace.agent.test.SpockRunner".equals(runnerClassName)
-          || "com.intuit.karate.junit4.Karate".equals(runnerClassName)) {
+          || runnerClassName.startsWith("com.intuit.karate")
+          || runnerClassName.startsWith("io.cucumber")) {
         // checking class names in hierarchyMatcher alone is not enough:
         // for example, Karate calls #run method of its super class,
         // that was transformed

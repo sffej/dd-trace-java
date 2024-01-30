@@ -32,6 +32,7 @@ import com.datadog.profiling.controller.UnsupportedEnvironmentException;
 import com.datadog.profiling.utils.ProfilingMode;
 import com.datadoghq.profiler.ContextSetter;
 import com.datadoghq.profiler.JavaProfiler;
+import datadog.trace.api.Platform;
 import datadog.trace.api.config.ProfilingConfig;
 import datadog.trace.api.profiling.RecordingData;
 import datadog.trace.bootstrap.config.provider.ConfigProvider;
@@ -68,6 +69,11 @@ public final class DatadogProfiler {
   }
 
   private static void logFailedInstantiation(Throwable error) {
+    if (Platform.isNativeImageBuilder() || Platform.isNativeImage()) {
+      // Datadog profiler is not supported in native-image mode
+      // Skip logging the error
+      return;
+    }
     OperatingSystem os = OperatingSystem.current();
     if (os != OperatingSystem.linux) {
       log.debug("Datadog profiler only supported on Linux", error);
@@ -151,7 +157,7 @@ public final class DatadogProfiler {
                   ProfilingConfig.PROFILING_DATADOG_PROFILER_SCRATCH,
                   ProfilingConfig.PROFILING_DATADOG_PROFILER_SCRATCH_DEFAULT));
     } catch (IOException e) {
-      throw new UnsupportedOperationException("Unable to instantiate datadog profiler");
+      throw new UnsupportedOperationException("Unable to instantiate datadog profiler", e);
     }
     if (profiler == null) {
       throw new UnsupportedEnvironmentException("Unable to instantiate datadog profiler");
@@ -357,9 +363,9 @@ public final class DatadogProfiler {
     return cmdString;
   }
 
-  public void recordTraceRoot(long rootSpanId, String endpoint) {
+  public void recordTraceRoot(long rootSpanId, String endpoint, String operation) {
     if (profiler != null) {
-      if (!profiler.recordTraceRoot(rootSpanId, endpoint, MAX_NUM_ENDPOINTS)) {
+      if (!profiler.recordTraceRoot(rootSpanId, endpoint, operation, MAX_NUM_ENDPOINTS)) {
         log.debug(
             "Endpoint event not written because more than {} distinct endpoints have been encountered."
                 + " This avoids excessive memory overhead.",

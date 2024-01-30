@@ -1,7 +1,6 @@
 package datadog.trace.instrumentation.aws.v0;
 
 import static datadog.trace.agent.tooling.bytebuddy.matcher.NameMatchers.named;
-import static java.util.Collections.singletonMap;
 import static net.bytebuddy.matcher.ElementMatchers.isMethod;
 
 import com.amazonaws.handlers.RequestHandler2;
@@ -42,13 +41,17 @@ public final class HandlerChainFactoryInstrumentation extends Instrumenter.Traci
 
   @Override
   public Map<String, String> contextStore() {
-    return singletonMap(
-        "com.amazonaws.services.sqs.model.ReceiveMessageResult", "java.lang.String");
+    Map<String, String> map = new java.util.HashMap<>();
+    map.put("com.amazonaws.services.sqs.model.ReceiveMessageResult", "java.lang.String");
+    map.put(
+        "com.amazonaws.AmazonWebServiceRequest",
+        "datadog.trace.bootstrap.instrumentation.api.AgentSpan");
+    return map;
   }
 
   @Override
-  public void adviceTransformations(AdviceTransformation transformation) {
-    transformation.applyAdvice(
+  public void methodAdvice(MethodTransformer transformer) {
+    transformer.applyAdvice(
         isMethod().and(named("newRequestHandler2Chain")),
         HandlerChainFactoryInstrumentation.class.getName() + "$HandlerChainAdvice");
   }
@@ -64,7 +67,10 @@ public final class HandlerChainFactoryInstrumentation extends Instrumenter.Traci
       handlers.add(
           new TracingRequestHandler(
               InstrumentationContext.get(
-                  "com.amazonaws.services.sqs.model.ReceiveMessageResult", "java.lang.String")));
+                  "com.amazonaws.services.sqs.model.ReceiveMessageResult", "java.lang.String"),
+              InstrumentationContext.get(
+                  "com.amazonaws.AmazonWebServiceRequest",
+                  "datadog.trace.bootstrap.instrumentation.api.AgentSpan")));
     }
   }
 }

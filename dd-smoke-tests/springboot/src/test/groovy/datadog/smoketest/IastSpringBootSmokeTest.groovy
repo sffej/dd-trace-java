@@ -1,9 +1,11 @@
 package datadog.smoketest
 
+import datadog.trace.api.config.IastConfig
 import groovy.transform.CompileDynamic
-import okhttp3.FormBody
 import okhttp3.Request
 import okhttp3.Response
+
+import static datadog.trace.api.iast.IastContext.Mode.GLOBAL
 
 @CompileDynamic
 class IastSpringBootSmokeTest extends AbstractIastSpringBootTest {
@@ -27,22 +29,31 @@ class IastSpringBootSmokeTest extends AbstractIastSpringBootTest {
     }
   }
 
-
-  void 'gson deserialization'() {
-
+  void 'find hardcoded secret'() {
     given:
-    final url = "http://localhost:${httpPort}/gson_deserialization"
-    final body = new FormBody.Builder().add('json', '{"name": "gsonTest", "value" : "valueTest"}').build()
-    final request = new Request.Builder().url(url).post(body).build()
+    String url = "http://localhost:${httpPort}/hardcodedSecret"
 
     when:
-    client.newCall(request).execute()
+    Response response = client.newCall(new Request.Builder().url(url).get().build()).execute()
 
     then:
-    hasTainted { tainted ->
-      tainted.value == 'gsonTest' &&
-        tainted.ranges[0].source.name == 'json' &&
-        tainted.ranges[0].source.origin == 'http.request.parameter'
+    response.successful
+    hasVulnerabilityInLogs {
+      vul ->
+      vul.type == 'HARDCODED_SECRET'
+      && vul.location.method == '<init>'
+      && vul.location.path == 'datadog.smoketest.springboot.controller.IastWebController'
+      && vul.location.line == 57
+      && vul.evidence.value == 'age-secret-key'
+    }
+  }
+
+  static class WithGlobalContext extends IastSpringBootSmokeTest {
+    @Override
+    protected List<String> iastJvmOpts() {
+      final opts = super.iastJvmOpts()
+      opts.add(withSystemProperty(IastConfig.IAST_CONTEXT_MODE, GLOBAL.name()))
+      return opts
     }
   }
 }

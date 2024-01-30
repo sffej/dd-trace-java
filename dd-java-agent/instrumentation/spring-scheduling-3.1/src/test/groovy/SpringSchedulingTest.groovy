@@ -1,5 +1,6 @@
 import datadog.trace.agent.test.AgentTestRunner
 import datadog.trace.bootstrap.instrumentation.api.Tags
+import org.springframework.boot.actuate.scheduling.ScheduledTasksEndpoint
 import org.springframework.context.annotation.AnnotationConfigApplicationContext
 
 import java.util.concurrent.TimeUnit
@@ -28,6 +29,12 @@ class SpringSchedulingTest extends AgentTestRunner {
           }
         }
       }
+    }
+    and:
+    def scheduledTaskEndpoint = context.getBean(ScheduledTasksEndpoint)
+    assert scheduledTaskEndpoint != null
+    scheduledTaskEndpoint.scheduledTasks().getCron().each {
+      it.getRunnable().getTarget() == TriggerTask.getName()
     }
     cleanup:
     context.close()
@@ -71,7 +78,7 @@ class SpringSchedulingTest extends AgentTestRunner {
     assertTraces(1) {
       trace(1) {
         span {
-          resourceNameContains("LambdaTaskConfigurer\$\$Lambda\$")
+          resourceNameContains("LambdaTaskConfigurer\$\$Lambda")
           operationName "scheduled.call"
           parent()
           errored false

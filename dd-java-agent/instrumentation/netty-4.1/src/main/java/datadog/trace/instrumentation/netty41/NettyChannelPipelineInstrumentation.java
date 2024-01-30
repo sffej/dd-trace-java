@@ -75,22 +75,23 @@ public class NettyChannelPipelineInstrumentation extends Instrumenter.Tracing
       packageName + ".server.HttpServerResponseTracingHandler",
       packageName + ".server.HttpServerTracingHandler",
       packageName + ".server.MaybeBlockResponseHandler",
+      packageName + ".NettyHttp2Helper",
     };
   }
 
   @Override
-  public void adviceTransformations(AdviceTransformation transformation) {
-    transformation.applyAdvice(
+  public void methodAdvice(MethodTransformer transformer) {
+    transformer.applyAdvice(
         isMethod()
             .and(namedOneOf("addFirst", "addLast"))
             .and(takesArgument(2, named("io.netty.channel.ChannelHandler"))),
         NettyChannelPipelineInstrumentation.class.getName() + "$AddHandlerAdvice");
-    transformation.applyAdvice(
+    transformer.applyAdvice(
         isMethod()
             .and(namedOneOf("addBefore", "addAfter"))
             .and(takesArgument(3, named("io.netty.channel.ChannelHandler"))),
         NettyChannelPipelineInstrumentation.class.getName() + "$AddHandlerAdvice");
-    transformation.applyAdvice(
+    transformer.applyAdvice(
         isMethod().and(named("connect")).and(returns(named("io.netty.channel.ChannelFuture"))),
         NettyChannelPipelineInstrumentation.class.getName() + "$ConnectAdvice");
   }
@@ -153,6 +154,13 @@ public class NettyChannelPipelineInstrumentation extends Instrumenter.Tracing
           toAdd = HttpClientRequestTracingHandler.INSTANCE;
         } else if (handler instanceof HttpResponseDecoder) {
           toAdd = HttpClientResponseTracingHandler.INSTANCE;
+        } else if (NettyHttp2Helper.isHttp2FrameCodec(handler)) {
+          if (NettyHttp2Helper.isServer(handler)) {
+            toAdd = new HttpServerTracingHandler();
+            toAdd2 = MaybeBlockResponseHandler.INSTANCE;
+          } else {
+            toAdd = new HttpClientTracingHandler();
+          }
         }
         if (toAdd != null) {
           // Get the name so we can add immediately following

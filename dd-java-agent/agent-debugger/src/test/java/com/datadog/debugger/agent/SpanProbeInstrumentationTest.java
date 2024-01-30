@@ -41,6 +41,7 @@ public class SpanProbeInstrumentationTest extends ProbeInstrumentationTest {
     assertEquals(CLASS_NAME + ".main", span.resourceName);
     assertTrue(span.isFinished());
     assertArrayEquals(new String[] {SPAN_PROBEID_TAG}, span.tags);
+    probeStatusSink.addEmitting(eq(SPAN_ID));
   }
 
   @Test
@@ -83,6 +84,7 @@ public class SpanProbeInstrumentationTest extends ProbeInstrumentationTest {
     assertEquals(CLASS_NAME + ".main:L4-8", span.resourceName);
     assertTrue(span.isFinished());
     assertArrayEquals(new String[] {SPAN_PROBEID_TAG}, span.tags);
+    probeStatusSink.addEmitting(eq(SPAN_ID));
   }
 
   @Test
@@ -151,9 +153,9 @@ public class SpanProbeInstrumentationTest extends ProbeInstrumentationTest {
         new DebuggerTransformer(
             config, configuration, null, new DebuggerSink(config, probeStatusSink));
     instr.addTransformer(currentTransformer);
-    mockSink = new MockSink();
+    mockSink = new MockSink(config, probeStatusSink);
     DebuggerAgentHelper.injectSink(mockSink);
-    DebuggerContext.init(null, null);
+    DebuggerContext.initProbeResolver(null);
     DebuggerContext.initClassFilter(new DenyListHelper(null));
     MockTracer mockTracer = new MockTracer();
     DebuggerContext.initTracer(mockTracer);
@@ -165,7 +167,7 @@ public class SpanProbeInstrumentationTest extends ProbeInstrumentationTest {
     boolean throwing;
 
     @Override
-    public DebuggerSpan createSpan(String resourceName, String[] tags) {
+    public DebuggerSpan createSpan(String encodedProbeId, String resourceName, String[] tags) {
       if (throwing) {
         throw new IllegalArgumentException("oops");
       }

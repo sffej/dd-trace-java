@@ -21,8 +21,10 @@ import datadog.trace.api.internal.InternalTracer;
 import datadog.trace.api.internal.TraceSegment;
 import datadog.trace.api.profiling.Timer;
 import datadog.trace.api.sampling.PrioritySampling;
+import datadog.trace.api.sampling.SamplingRule;
 import datadog.trace.api.scopemanager.ScopeListener;
 import datadog.trace.bootstrap.instrumentation.api.AgentSpan.Context;
+import datadog.trace.context.TraceScope;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -148,6 +150,10 @@ public class AgentTracer {
     return get().noopSpan();
   }
 
+  public static AgentSpan blackholeSpan() {
+    return get().blackholeSpan();
+  }
+
   public static final TracerAPI NOOP_TRACER = new NoopTracerAPI();
 
   private static volatile TracerAPI provider = NOOP_TRACER;
@@ -238,6 +244,8 @@ public class AgentTracer {
     AgentPropagation propagate();
 
     AgentSpan noopSpan();
+
+    AgentSpan blackholeSpan();
 
     /** Deprecated. Use {@link #buildSpan(String, CharSequence)} instead. */
     @Deprecated
@@ -395,6 +403,11 @@ public class AgentTracer {
     }
 
     @Override
+    public AgentSpan blackholeSpan() {
+      return NoopAgentSpan.INSTANCE; // no-op tracer stays no-op
+    }
+
+    @Override
     public SpanBuilder buildSpan(final String instrumentationName, final CharSequence spanName) {
       return null;
     }
@@ -445,6 +458,11 @@ public class AgentTracer {
     @Override
     public boolean addTraceInterceptor(final TraceInterceptor traceInterceptor) {
       return false;
+    }
+
+    @Override
+    public TraceScope muteTracing() {
+      return NoopAgentScope.INSTANCE;
     }
 
     @Override
@@ -518,7 +536,32 @@ public class AgentTracer {
     }
   }
 
-  public static final class NoopAgentSpan implements AgentSpan {
+  public static final class BlackholeAgentSpan extends NoopAgentSpan {
+    private final DDTraceId ddTraceId;
+
+    public BlackholeAgentSpan(final DDTraceId ddTraceId) {
+      this.ddTraceId = ddTraceId;
+    }
+
+    @Override
+    public boolean isSameTrace(final AgentSpan otherSpan) {
+      return otherSpan != null
+          && ((ddTraceId != null && ddTraceId.equals(otherSpan.getTraceId()))
+              || otherSpan.getTraceId() == null);
+    }
+
+    @Override
+    public DDTraceId getTraceId() {
+      return ddTraceId;
+    }
+
+    @Override
+    public Context context() {
+      return BlackholeContext.INSTANCE;
+    }
+  }
+
+  public static class NoopAgentSpan implements AgentSpan {
     public static final NoopAgentSpan INSTANCE = new NoopAgentSpan();
 
     private NoopAgentSpan() {}
@@ -654,6 +697,11 @@ public class AgentTracer {
     @Override
     public Integer forceSamplingDecision() {
       return null;
+    }
+
+    @Override
+    public AgentSpan setSamplingPriority(int newPriority, int samplingMechanism) {
+      return this;
     }
 
     @Override
@@ -868,6 +916,19 @@ public class AgentTracer {
         AgentSpan span, C carrier, Setter<C> setter, LinkedHashMap<String, String> sortedTags) {}
 
     @Override
+    public <C> void injectPathwayContext(
+        AgentSpan span,
+        C carrier,
+        Setter<C> setter,
+        LinkedHashMap<String, String> sortedTags,
+        long defaultTimestamp,
+        long payloadSizeBytes) {}
+
+    @Override
+    public <C> void injectPathwayContextWithoutSendingStats(
+        AgentSpan span, C carrier, Setter<C> setter, LinkedHashMap<String, String> sortedTags) {}
+
+    @Override
     public <C> Context.Extracted extract(final C carrier, final ContextVisitor<C> getter) {
       return NoopContext.INSTANCE;
     }
@@ -890,7 +951,13 @@ public class AgentTracer {
     }
   }
 
-  public static final class NoopContext implements Context.Extracted {
+  public static final class BlackholeContext extends NoopContext {
+    public static final BlackholeContext INSTANCE = new BlackholeContext();
+
+    private BlackholeContext() {}
+  }
+
+  public static class NoopContext implements Context.Extracted {
     public static final NoopContext INSTANCE = new NoopContext();
 
     private NoopContext() {}
@@ -1044,6 +1111,11 @@ public class AgentTracer {
     public void add(StatsPoint statsPoint) {}
 
     @Override
+    public int shouldSampleSchema(String topic) {
+      return 0;
+    }
+
+    @Override
     public void setConsumeCheckpoint(
         String type, String source, DataStreamsContextCarrier carrier) {}
 
@@ -1081,6 +1153,14 @@ public class AgentTracer {
     @Override
     public void setCheckpoint(
         LinkedHashMap<String, String> sortedTags, Consumer<StatsPoint> pointConsumer) {}
+
+    @Override
+    public void saveStats(StatsPoint point) {}
+
+    @Override
+    public StatsPoint getSavedStats() {
+      return null;
+    }
 
     @Override
     public byte[] encode() {
@@ -1141,11 +1221,6 @@ public class AgentTracer {
     public static final NoopTraceConfig INSTANCE = new NoopTraceConfig();
 
     @Override
-    public boolean isDebugEnabled() {
-      return false;
-    }
-
-    @Override
     public boolean isRuntimeMetricsEnabled() {
       return false;
     }
@@ -1183,6 +1258,16 @@ public class AgentTracer {
     @Override
     public Double getTraceSampleRate() {
       return null;
+    }
+
+    @Override
+    public List<? extends SamplingRule.SpanSamplingRule> getSpanSamplingRules() {
+      return Collections.emptyList();
+    }
+
+    @Override
+    public List<? extends SamplingRule.TraceSamplingRule> getTraceSamplingRules() {
+      return Collections.emptyList();
     }
   }
 }

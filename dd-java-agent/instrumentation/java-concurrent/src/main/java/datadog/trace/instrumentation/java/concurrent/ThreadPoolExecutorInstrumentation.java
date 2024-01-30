@@ -16,11 +16,9 @@ import com.google.auto.service.AutoService;
 import datadog.trace.agent.tooling.ExcludeFilterProvider;
 import datadog.trace.agent.tooling.Instrumenter;
 import datadog.trace.api.Platform;
-import datadog.trace.bootstrap.ContextStore;
 import datadog.trace.bootstrap.InstrumentationContext;
 import datadog.trace.bootstrap.instrumentation.api.AgentScope;
 import datadog.trace.bootstrap.instrumentation.java.concurrent.ExcludeFilter;
-import datadog.trace.bootstrap.instrumentation.java.concurrent.QueueTimerHelper;
 import datadog.trace.bootstrap.instrumentation.java.concurrent.State;
 import datadog.trace.bootstrap.instrumentation.java.concurrent.TPEHelper;
 import datadog.trace.bootstrap.instrumentation.java.concurrent.Wrapper;
@@ -96,25 +94,25 @@ public final class ThreadPoolExecutorInstrumentation extends Instrumenter.Tracin
   }
 
   @Override
-  public void adviceTransformations(AdviceTransformation transformation) {
-    transformation.applyAdvice(isConstructor(), getClass().getName() + "$Init");
-    transformation.applyAdvice(
+  public void methodAdvice(MethodTransformer transformer) {
+    transformer.applyAdvice(isConstructor(), getClass().getName() + "$Init");
+    transformer.applyAdvice(
         named("execute")
             .and(isMethod())
             .and(NO_WRAPPING_BEFORE_DELEGATION)
             .and(takesArgument(0, named(Runnable.class.getName()))),
         getClass().getName() + "$Execute");
-    transformation.applyAdvice(
+    transformer.applyAdvice(
         named("beforeExecute")
             .and(isMethod())
             .and(takesArgument(1, named(Runnable.class.getName()))),
         getClass().getName() + "$BeforeExecute");
-    transformation.applyAdvice(
+    transformer.applyAdvice(
         named("afterExecute")
             .and(isMethod())
             .and(takesArgument(0, named(Runnable.class.getName()))),
         getClass().getName() + "$AfterExecute");
-    transformation.applyAdvice(
+    transformer.applyAdvice(
         named("remove").and(isMethod()).and(returns(Runnable.class)),
         getClass().getName() + "$Remove");
   }
@@ -150,10 +148,7 @@ public final class ThreadPoolExecutorInstrumentation extends Instrumenter.Tracin
         if (TPEHelper.useWrapping(task)) {
           task = Wrapper.wrap(task);
         } else {
-          ContextStore<Runnable, State> contextStore =
-              InstrumentationContext.get(Runnable.class, State.class);
-          TPEHelper.capture(contextStore, task);
-          QueueTimerHelper.startQueuingTimer(contextStore, tpe.getClass(), task);
+          TPEHelper.capture(InstrumentationContext.get(Runnable.class, State.class), tpe, task);
         }
       }
     }

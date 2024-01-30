@@ -9,7 +9,6 @@ import okhttp3.RequestBody
 import static datadog.trace.api.config.IastConfig.IAST_DEBUG_ENABLED
 import static datadog.trace.api.config.IastConfig.IAST_DETECTION_MODE
 import static datadog.trace.api.config.IastConfig.IAST_ENABLED
-import static datadog.trace.api.config.IastConfig.IAST_REDACTION_ENABLED
 
 abstract class AbstractIastSpringBootTest extends AbstractIastServerSmokeTest {
 
@@ -22,18 +21,21 @@ abstract class AbstractIastSpringBootTest extends AbstractIastServerSmokeTest {
     List<String> command = []
     command.add(javaPath())
     command.addAll(defaultJavaProperties)
-    command.addAll([
-      withSystemProperty(IAST_ENABLED, true),
-      withSystemProperty(IAST_DETECTION_MODE, 'FULL'),
-      withSystemProperty(IAST_DEBUG_ENABLED, true),
-      withSystemProperty(IAST_REDACTION_ENABLED, false)
-    ])
+    command.addAll(iastJvmOpts())
     command.addAll((String[]) ['-jar', springBootShadowJar, "--server.port=${httpPort}"])
     ProcessBuilder processBuilder = new ProcessBuilder(command)
     processBuilder.directory(new File(buildDirectory))
     // Spring will print all environment variables to the log, which may pollute it and affect log assertions.
     processBuilder.environment().clear()
     return processBuilder
+  }
+
+  protected List<String> iastJvmOpts() {
+    return [
+      withSystemProperty(IAST_ENABLED, true),
+      withSystemProperty(IAST_DETECTION_MODE, 'FULL'),
+      withSystemProperty(IAST_DEBUG_ENABLED, true),
+    ]
   }
 
   void 'IAST subsystem starts'() {
@@ -110,6 +112,34 @@ abstract class AbstractIastSpringBootTest extends AbstractIastServerSmokeTest {
     }
 
   }
+
+  void 'Multipart Request original file name'(){
+    given:
+    String url = "http://localhost:${httpPort}/multipart"
+
+    RequestBody requestBody = new MultipartBody.Builder().setType(MultipartBody.FORM)
+      .addFormDataPart("theFile", "theFileName",
+      RequestBody.create(MediaType.parse("text/plain"), "FILE_CONTENT"))
+      .addFormDataPart("param1", "param1Value")
+      .build()
+
+    Request request = new Request.Builder()
+      .url(url)
+      .post(requestBody)
+      .build()
+    when:
+    final retValue = client.newCall(request).execute().body().string()
+
+    then:
+    retValue == "fileName: theFile"
+    hasTainted { tainted ->
+      tainted.value == 'theFileName' &&
+        tainted.ranges[0].source.name == 'filename' &&
+        tainted.ranges[0].source.origin == 'http.request.multipart.parameter'
+    }
+
+  }
+
 
   void 'iast.enabled tag is present'() {
     setup:
@@ -822,6 +852,43 @@ abstract class AbstractIastSpringBootTest extends AbstractIastServerSmokeTest {
       tainted.value == '/getrequesturi' &&
         tainted.ranges[0].source.origin == 'http.request.path'
     }
+  }
+
+  void 'header injection'(){
+    setup:
+    final url = "http://localhost:${httpPort}/header_injection?param=test"
+    final request = new Request.Builder().url(url).get().build()
+
+    when:
+    client.newCall(request).execute()
+
+    then:
+    hasVulnerability { vul -> vul.type == 'HEADER_INJECTION' }
+  }
+
+  void 'header injection exclusion'(){
+    setup:
+    final url = "http://localhost:${httpPort}/header_injection_exclusion?param=testExclusion"
+    final request = new Request.Builder().url(url).get().build()
+
+    when:
+    client.newCall(request).execute()
+
+    then:
+    noVulnerability { vul -> vul.type == 'HEADER_INJECTION'}
+  }
+
+  void 'header injection redaction'(){
+    setup:
+    String bearer = URLEncoder.encode("Authorization: bearer 12345644", "UTF-8")
+    final url = "http://localhost:${httpPort}/header_injection_redaction?param=" + bearer
+    final request = new Request.Builder().url(url).get().build()
+
+    when:
+    client.newCall(request).execute()
+
+    then:
+    hasVulnerability { vul -> vul.type == 'HEADER_INJECTION' && vul.evidence.valueParts[1].redacted == true }
   }
 
 }

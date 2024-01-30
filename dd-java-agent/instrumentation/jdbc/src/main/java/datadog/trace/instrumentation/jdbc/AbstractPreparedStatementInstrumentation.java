@@ -48,8 +48,8 @@ public abstract class AbstractPreparedStatementInstrumentation extends Instrumen
   }
 
   @Override
-  public void adviceTransformations(AdviceTransformation transformation) {
-    transformation.applyAdvice(
+  public void methodAdvice(MethodTransformer transformer) {
+    transformer.applyAdvice(
         nameStartsWith("execute").and(takesArguments(0)).and(isPublic()),
         AbstractPreparedStatementInstrumentation.class.getName() + "$PreparedStatementAdvice");
   }
@@ -73,8 +73,10 @@ public abstract class AbstractPreparedStatementInstrumentation extends Instrumen
 
         final AgentSpan span = startSpan(DATABASE_QUERY);
         DECORATE.afterStart(span);
-        DECORATE.onConnection(
-            span, connection, InstrumentationContext.get(Connection.class, DBInfo.class));
+        DBInfo dbInfo =
+            JDBCDecorator.parseDBInfo(
+                connection, InstrumentationContext.get(Connection.class, DBInfo.class));
+        DECORATE.onConnection(span, dbInfo);
         DECORATE.onPreparedStatement(span, queryInfo);
         return activateSpan(span);
       } catch (SQLException e) {
