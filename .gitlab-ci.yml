@@ -169,7 +169,7 @@ deploy_to_di_backend:manual:
       allow_failure: true
   trigger:
     project: DataDog/debugger-demos
-    branch: main
+    branch: ojung/rename-java-demo-artifacts
   variables:
     UPSTREAM_PACKAGE_JOB: build
     UPSTREAM_PROJECT_ID: $CI_PROJECT_ID
