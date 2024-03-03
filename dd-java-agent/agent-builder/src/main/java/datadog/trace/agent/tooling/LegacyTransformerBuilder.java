@@ -1,9 +1,7 @@
 package datadog.trace.agent.tooling;
 
-import static datadog.trace.agent.tooling.bytebuddy.DDTransformers.defaultTransformers;
 import static datadog.trace.agent.tooling.bytebuddy.matcher.ClassLoaderMatchers.ANY_CLASS_LOADER;
 import static datadog.trace.agent.tooling.bytebuddy.matcher.ClassLoaderMatchers.hasClassNamed;
-import static net.bytebuddy.matcher.ElementMatchers.isSynthetic;
 import static net.bytebuddy.matcher.ElementMatchers.none;
 import static net.bytebuddy.matcher.ElementMatchers.not;
 
@@ -11,10 +9,8 @@ import datadog.trace.agent.tooling.bytebuddy.ExceptionHandlers;
 import datadog.trace.agent.tooling.bytebuddy.matcher.FailSafeRawMatcher;
 import datadog.trace.agent.tooling.bytebuddy.matcher.InjectContextFieldMatcher;
 import datadog.trace.agent.tooling.bytebuddy.matcher.KnownTypesMatcher;
-import datadog.trace.agent.tooling.bytebuddy.matcher.MuzzleMatcher;
 import datadog.trace.agent.tooling.bytebuddy.matcher.SingleTypeMatcher;
 import datadog.trace.agent.tooling.context.FieldBackedContextInjector;
-import datadog.trace.agent.tooling.context.FieldBackedContextRequestRewriter;
 import datadog.trace.api.InstrumenterConfig;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
@@ -31,7 +27,8 @@ public final class LegacyTransformerBuilder extends AbstractTransformerBuilder {
   private ElementMatcher<? super MethodDescription> ignoreMatcher;
   private AgentBuilder.Identified.Extendable adviceBuilder;
 
-  LegacyTransformerBuilder(AgentBuilder agentBuilder) {
+  LegacyTransformerBuilder(AgentBuilder agentBuilder, InstrumenterIndex instrumenterIndex) {
+    super(instrumenterIndex);
     this.agentBuilder = agentBuilder;
   }
 
@@ -45,38 +42,41 @@ public final class LegacyTransformerBuilder extends AbstractTransformerBuilder {
   }
 
   @Override
-  protected void buildInstrumentation(InstrumenterModule module, Instrumenter member) {
+  protected void prepareInstrumentation(InstrumenterModule module, int instrumentationId) {}
 
-    ignoreMatcher = module.methodIgnoreMatcher();
-    adviceBuilder =
-        agentBuilder
-            .type(typeMatcher(module, member))
-            .and(NOT_DECORATOR_MATCHER)
-            .and(new MuzzleMatcher(module))
-            .transform(defaultTransformers());
+  @Override
+  protected void buildTypeInstrumentation(Instrumenter member, int transformationId) {
 
-    String[] helperClassNames = module.helperClassNames();
-    if (module.injectHelperDependencies()) {
-      helperClassNames = HelperScanner.withClassDependencies(helperClassNames);
-    }
-    if (helperClassNames.length > 0) {
-      adviceBuilder =
-          adviceBuilder.transform(
-              new HelperTransformer(module.getClass().getSimpleName(), helperClassNames));
-    }
-
-    Map<String, String> contextStore = module.contextStore();
-    if (!contextStore.isEmpty()) {
-      // rewrite context store access to call FieldBackedContextStores with assigned store-id
-      adviceBuilder =
-          adviceBuilder.transform(
-              new VisitingTransformer(
-                  new FieldBackedContextRequestRewriter(contextStore, module.name())));
-
-      registerContextStoreInjection(module, member, contextStore);
-    }
-
-    agentBuilder = registerAdvice(member);
+    //    ignoreMatcher = module.methodIgnoreMatcher();
+    //    adviceBuilder =
+    //        agentBuilder
+    //            .type(typeMatcher(module, member))
+    //            .and(NOT_DECORATOR_MATCHER)
+    //            .and(new MuzzleMatcher(module, instrumenterIndex.instrumentationId(module)))
+    //            .transform(defaultTransformers());
+    //
+    //    String[] helperClassNames = module.helperClassNames();
+    //    if (module.injectHelperDependencies()) {
+    //      helperClassNames = HelperScanner.withClassDependencies(helperClassNames);
+    //    }
+    //    if (helperClassNames.length > 0) {
+    //      adviceBuilder =
+    //          adviceBuilder.transform(
+    //              new HelperTransformer(module.getClass().getSimpleName(), helperClassNames));
+    //    }
+    //
+    //    Map<String, String> contextStore = module.contextStore();
+    //    if (!contextStore.isEmpty()) {
+    //      // rewrite context store access to call FieldBackedContextStores with assigned store-id
+    //      adviceBuilder =
+    //          adviceBuilder.transform(
+    //              new VisitingTransformer(
+    //                  new FieldBackedContextRequestRewriter(contextStore, module.name())));
+    //
+    //      registerContextStoreInjection(module, member, contextStore);
+    //    }
+    //
+    //    agentBuilder = registerAdvice(member);
   }
 
   private AgentBuilder registerAdvice(Instrumenter instrumenter) {
@@ -158,29 +158,18 @@ public final class LegacyTransformerBuilder extends AbstractTransformerBuilder {
   }
 
   @Override
-  protected void buildSingleAdvice(Instrumenter.ForSingleType instrumenter) {
-    AgentBuilder.RawMatcher matcher = new SingleTypeMatcher(instrumenter.instrumentedType());
-
-    ignoreMatcher = isSynthetic();
-    adviceBuilder =
-        agentBuilder.type(matcher).and(NOT_DECORATOR_MATCHER).transform(defaultTransformers());
-
-    agentBuilder = registerAdvice((Instrumenter) instrumenter);
-  }
-
-  @Override
   public void applyAdvice(Instrumenter.TransformingAdvice typeAdvice) {
     adviceBuilder = adviceBuilder.transform(typeAdvice::transform);
   }
 
   @Override
-  public void applyAdvice(ElementMatcher<? super MethodDescription> matcher, String className) {
+  public void applyAdvice(ElementMatcher<? super MethodDescription> matcher, String adviceClass) {
     adviceBuilder =
         adviceBuilder.transform(
             new AgentBuilder.Transformer.ForAdvice()
                 .include(Utils.getBootstrapProxy(), Utils.getAgentClassLoader())
                 .withExceptionHandler(ExceptionHandlers.defaultExceptionHandler())
-                .advice(not(ignoreMatcher).and(matcher), className));
+                .advice(not(ignoreMatcher).and(matcher), adviceClass));
   }
 
   @Override

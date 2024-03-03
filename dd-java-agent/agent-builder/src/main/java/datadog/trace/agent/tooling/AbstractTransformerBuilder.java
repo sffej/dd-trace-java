@@ -33,27 +33,28 @@ abstract class AbstractTransformerBuilder
   private final Map<Map.Entry<String, String>, ElementMatcher<ClassLoader>> contextStoreInjection =
       new HashMap<>();
 
-  public final void applyInstrumentation(Instrumenter instrumenter) {
-    if (instrumenter instanceof InstrumenterModule) {
-      InstrumenterModule module = (InstrumenterModule) instrumenter;
-      if (module.isEnabled()) {
-        InstrumenterState.registerInstrumentation(module);
-        for (Instrumenter member : module.typeInstrumentations()) {
-          buildInstrumentation(module, member);
-        }
+  private final InstrumenterIndex instrumenterIndex;
+
+  AbstractTransformerBuilder(InstrumenterIndex instrumenterIndex) {
+    this.instrumenterIndex = instrumenterIndex;
+  }
+
+  public final void applyInstrumentation(InstrumenterModule module) {
+    if (module.isEnabled()) {
+      int instrumentationId = instrumenterIndex.instrumentationId(module);
+      InstrumenterState.registerInstrumentation(module, instrumentationId);
+      prepareInstrumentation(module, instrumentationId);
+      for (Instrumenter member : module.typeInstrumentations()) {
+        buildTypeInstrumentation(member, instrumenterIndex.transformationId(member));
       }
-    } else if (instrumenter instanceof Instrumenter.ForSingleType) {
-      buildSingleAdvice((Instrumenter.ForSingleType) instrumenter); // for testing purposes
-    } else {
-      throw new IllegalArgumentException("Unexpected Instrumenter type");
     }
   }
 
   public abstract ClassFileTransformer installOn(Instrumentation instrumentation);
 
-  protected abstract void buildInstrumentation(InstrumenterModule module, Instrumenter member);
+  protected abstract void prepareInstrumentation(InstrumenterModule module, int instrumentationId);
 
-  protected abstract void buildSingleAdvice(Instrumenter.ForSingleType instrumenter);
+  protected abstract void buildTypeInstrumentation(Instrumenter member, int transformationId);
 
   protected static final class VisitingTransformer implements AgentBuilder.Transformer {
     private final AsmVisitorWrapper visitor;
