@@ -50,12 +50,12 @@ cache:
       - .ivy2
       # Cached dependencies for sbt handled by coursier
       - .cache/coursier
-    policy: $DEPENDENCY_CACHE_POLICY
+    policy: '$DEPENDENCY_CACHE_POLICY'
   - key: $CI_PIPELINE_ID # Incremental build cache. Shared by all jobs in the pipeline
     paths:
       - .gradle/caches/8.4 # must match gradle-wrapper.properties
       - workspace/.gradle
-    policy: $BUILD_CACHE_POLICY
+    policy: '$BUILD_CACHE_POLICY'
 
 .gradle_build: &gradle_build
   <<: *common
