@@ -24,7 +24,7 @@ class URICallSIteTest extends AgentTestRunner {
 
     then:
     uri.toString() == expected
-    1 * module.taintIfAnyTainted(_ as URI, args as Object[])
+    1 * module.taintObjectIfAnyTainted(_ as URI, args as Object[])
 
     where:
     method | args                                                                          | expected
@@ -45,7 +45,7 @@ class URICallSIteTest extends AgentTestRunner {
 
     then:
     uri.toString() == expected
-    1 * module.taintIfTainted(_ as URI, args[0])
+    1 * module.taintObjectIfTainted(_ as URI, args[0])
 
     where:
     method   | args                                          | expected
@@ -61,7 +61,7 @@ class URICallSIteTest extends AgentTestRunner {
     TestURICallSiteSuite.&"$method".call(args as Object[])
 
     then:
-    1 * module.taintIfTainted(_, _ as URI)
+    1 * module.taintObjectIfTainted(_, _ as URI)
 
     where:
     method          | args

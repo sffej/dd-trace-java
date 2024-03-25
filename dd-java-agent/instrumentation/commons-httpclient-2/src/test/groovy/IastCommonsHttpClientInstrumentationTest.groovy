@@ -1,20 +1,17 @@
-import datadog.trace.agent.test.AgentTestRunner
+import com.datadog.iast.test.IastAgentTestRunner
+import datadog.trace.api.iast.IastContext
 import datadog.trace.api.iast.InstrumentationBridge
 import datadog.trace.api.iast.propagation.PropagationModule
 import datadog.trace.api.iast.sink.SsrfModule
 import org.apache.commons.httpclient.HttpClient
+import org.apache.commons.httpclient.HttpMethod
 import org.apache.commons.httpclient.methods.GetMethod
 import spock.lang.AutoCleanup
 import spock.lang.Shared
 
 import static datadog.trace.agent.test.server.http.TestHttpServer.httpServer
 
-class IastCommonsHttpClientInstrumentationTest extends AgentTestRunner {
-
-  @Override
-  protected void configurePreAgent() {
-    injectSysConfig('dd.iast.enabled', 'true')
-  }
+class IastCommonsHttpClientInstrumentationTest extends IastAgentTestRunner {
 
   @AutoCleanup
   @Shared
@@ -43,7 +40,7 @@ class IastCommonsHttpClientInstrumentationTest extends AgentTestRunner {
     InstrumentationBridge.registerIastModule(ssrf)
 
     when:
-    new HttpClient().executeMethod(new GetMethod(url))
+    runUnderIastTrace { new HttpClient().executeMethod(new GetMethod(url)) }
 
     then:
     1 * ssrf.onURLConnection({ value -> tainteds.containsKey(value) })
@@ -51,9 +48,11 @@ class IastCommonsHttpClientInstrumentationTest extends AgentTestRunner {
 
   private void mockPropagation() {
     final propagation = Mock(PropagationModule) {
-      taintIfTainted(_, _) >> {
-        if (tainteds.containsKey(it[1])) {
-          tainteds.put(it[0], null)
+      taintObjectIfTainted(_ as IastContext, _ as HttpMethod, _ as String) >> {
+        final method = it[1] as HttpMethod
+        final url = it[2] as String
+        if (tainteds.containsKey(url)) {
+          tainteds.put(method, null)
         }
       }
     }

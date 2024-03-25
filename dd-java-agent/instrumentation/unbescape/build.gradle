@@ -16,6 +16,7 @@ dependencies {
   compileOnly group: 'org.unbescape', name: 'unbescape', version: '1.1.0.RELEASE'
 
   testImplementation group: 'org.unbescape', name: 'unbescape', version: '1.1.0.RELEASE'
+  testImplementation(testFixtures(project(':dd-java-agent:agent-iast')))
 
   testRuntimeOnly project(':dd-java-agent:instrumentation:iast-instrumenter')
 

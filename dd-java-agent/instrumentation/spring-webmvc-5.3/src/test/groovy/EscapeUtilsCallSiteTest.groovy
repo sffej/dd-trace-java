@@ -1,15 +1,11 @@
-import datadog.trace.agent.test.AgentTestRunner
+import com.datadog.iast.test.IastAgentTestRunner
+import datadog.trace.api.iast.IastContext
 import datadog.trace.api.iast.InstrumentationBridge
 import datadog.trace.api.iast.VulnerabilityMarks
 import datadog.trace.api.iast.propagation.PropagationModule
 import foo.bar.TestEscapeUtilsSuite
 
-class EscapeUtilsCallSiteTest extends AgentTestRunner {
-
-  @Override
-  protected void configurePreAgent() {
-    injectSysConfig("dd.iast.enabled", "true")
-  }
+class EscapeUtilsCallSiteTest extends IastAgentTestRunner {
 
   void 'test #method'() {
     given:
@@ -17,11 +13,11 @@ class EscapeUtilsCallSiteTest extends AgentTestRunner {
     InstrumentationBridge.registerIastModule(module)
 
     when:
-    final result = TestEscapeUtilsSuite.&"$method".call(args)
+    final result = computeUnderIastTrace { TestEscapeUtilsSuite.&"$method".call(*args) }
 
     then:
     result == expected
-    1 * module.taintIfTainted(_ as String, args[0], false, VulnerabilityMarks.XSS_MARK)
+    1 * module.taintStringIfTainted(_ as IastContext, _ as String, args[0], false, VulnerabilityMarks.XSS_MARK)
     0 * _
 
     where:
@@ -37,7 +33,7 @@ class EscapeUtilsCallSiteTest extends AgentTestRunner {
     InstrumentationBridge.registerIastModule(module)
 
     when:
-    TestEscapeUtilsSuite.&"$method".call(args)
+    runUnderIastTrace { TestEscapeUtilsSuite.&"$method".call(*args) }
 
     then:
     def ex = thrown(Exception)

@@ -26,6 +26,7 @@ dependencies {
   compileOnly group: 'commons-httpclient', name: 'commons-httpclient', version: '2.0'
 
   testImplementation group: 'commons-httpclient', name: 'commons-httpclient', version: '2.0'
+  testImplementation(testFixtures(project(':dd-java-agent:agent-iast')))
 
   latestDepTestImplementation group: 'commons-httpclient', name: 'commons-httpclient', version: '(2.0,20000000]'
 }

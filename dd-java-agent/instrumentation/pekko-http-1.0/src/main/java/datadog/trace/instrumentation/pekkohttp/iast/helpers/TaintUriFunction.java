@@ -17,14 +17,14 @@ public class TaintUriFunction implements JFunction1<Tuple1<Uri>, Tuple1<Uri>> {
     Uri uri = v1._1();
 
     PropagationModule mod = InstrumentationBridge.PROPAGATION;
-    if (mod == null) {
+    if (mod == null || uri == null) {
       return v1;
     }
     IastContext ctx = IastContext.Provider.get(AgentTracer.activeSpan());
     if (ctx == null) {
       return v1;
     }
-    mod.taint(ctx, uri, SourceTypes.REQUEST_QUERY);
+    mod.taintObject(ctx, uri, SourceTypes.REQUEST_QUERY);
 
     return v1;
   }

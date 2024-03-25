@@ -1,7 +1,8 @@
 package iast
 
+import com.datadog.iast.test.IastAgentTestRunner
 import com.fasterxml.jackson.core.JsonParser
-import datadog.trace.agent.test.AgentTestRunner
+import datadog.trace.api.iast.IastContext
 import datadog.trace.api.iast.InstrumentationBridge
 import datadog.trace.api.iast.SourceTypes
 import datadog.trace.api.iast.Taintable.Source
@@ -13,12 +14,7 @@ import org.apache.kafka.common.serialization.ByteBufferDeserializer
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.springframework.kafka.support.serializer.JsonDeserializer
 
-class KafkaIastDeserializerForkedTest extends AgentTestRunner {
-
-  @Override
-  protected void configurePreAgent() {
-    injectSysConfig('dd.iast.enabled', 'true')
-  }
+class KafkaIastDeserializerForkedTest extends IastAgentTestRunner {
 
   void 'test string deserializer'() {
     given:
@@ -31,11 +27,13 @@ class KafkaIastDeserializerForkedTest extends AgentTestRunner {
     final deserializer = new StringDeserializer()
 
     when:
-    deserializer.configure([:], source == SourceTypes.KAFKA_MESSAGE_KEY)
-    deserializer.deserialize("test", payload)
+    runUnderIastTrace {
+      deserializer.configure([:], source == SourceTypes.KAFKA_MESSAGE_KEY)
+      deserializer.deserialize("test", payload)
+    }
 
     then:
-    1 * propagationModule.taint(payload, source)
+    1 * propagationModule.taintObject(_ as IastContext, payload, source)
     1 * codecModule.onStringFromBytes(payload, _, _, _, _)
     0 * _
 
@@ -55,11 +53,13 @@ class KafkaIastDeserializerForkedTest extends AgentTestRunner {
     final deserializer = new ByteArrayDeserializer()
 
     when:
-    deserializer.configure([:], source == SourceTypes.KAFKA_MESSAGE_KEY)
-    deserializer.deserialize("test", payload)
+    runUnderIastTrace {
+      deserializer.configure([:], source == SourceTypes.KAFKA_MESSAGE_KEY)
+      deserializer.deserialize("test", payload)
+    }
 
     then:
-    1 * propagationModule.taint(payload, source)
+    1 * propagationModule.taintObject(_ as IastContext, payload, source)
     0 * _
 
     where:
@@ -78,12 +78,14 @@ class KafkaIastDeserializerForkedTest extends AgentTestRunner {
     final deserializer = new ByteBufferDeserializer()
 
     when:
-    deserializer.configure([:], source == SourceTypes.KAFKA_MESSAGE_KEY)
-    deserializer.deserialize("test", payload)
+    runUnderIastTrace {
+      deserializer.configure([:], source == SourceTypes.KAFKA_MESSAGE_KEY)
+      deserializer.deserialize("test", payload)
+    }
 
     then:
-    1 * propagationModule.taint(payload, source)
-    1 * propagationModule.taintIfTainted(_, payload, true, VulnerabilityMarks.NOT_MARKED)
+    1 * propagationModule.taintObject(_ as IastContext, payload, source)
+    1 * propagationModule.taintObjectIfTainted(_ as IastContext, payload, true, VulnerabilityMarks.NOT_MARKED)
     0 * _
 
     where:
@@ -103,18 +105,20 @@ class KafkaIastDeserializerForkedTest extends AgentTestRunner {
     final deserializer = new JsonDeserializer(TestBean)
 
     when:
-    deserializer.configure([:], source == SourceTypes.KAFKA_MESSAGE_KEY)
-    deserializer.deserialize('test', payload)
+    runUnderIastTrace {
+      deserializer.configure([:], source == SourceTypes.KAFKA_MESSAGE_KEY)
+      deserializer.deserialize('test', payload)
+    }
 
     then:
-    1 * propagationModule.taint(payload, source)
-    1 * propagationModule.taintIfTainted(_ as JsonParser, payload)
-    1 * propagationModule.findSource(_) >> Stub(Source) {
+    1 * propagationModule.taintObject(_ as IastContext, payload, source)
+    1 * propagationModule.taintObjectIfTainted(_ as IastContext, _ as JsonParser, payload)
+    1 * propagationModule.findSource(_ as IastContext, _) >> Stub(Source) {
       getOrigin() >> source
       getValue() >> json
     }
-    1 * propagationModule.taint(_, 'name', source, 'name', json)
-    1 * propagationModule.taint(_, 'Mr Bean', source, 'name', json)
+    1 * propagationModule.taintString(_  as IastContext, 'name', source, 'name', json)
+    1 * propagationModule.taintString(_ as IastContext, 'Mr Bean', source, 'name', json)
     0 * _
 
     where:

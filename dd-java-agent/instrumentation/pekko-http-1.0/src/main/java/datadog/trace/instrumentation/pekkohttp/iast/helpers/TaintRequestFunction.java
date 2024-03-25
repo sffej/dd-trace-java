@@ -19,14 +19,14 @@ public class TaintRequestFunction implements JFunction1<Tuple1<HttpRequest>, Tup
     HttpRequest httpRequest = v1._1();
 
     PropagationModule mod = InstrumentationBridge.PROPAGATION;
-    if (mod == null) {
+    if (mod == null || httpRequest == null) {
       return v1;
     }
     IastContext ctx = IastContext.Provider.get(AgentTracer.activeSpan());
     if (ctx == null) {
       return v1;
     }
-    mod.taint(ctx, httpRequest, SourceTypes.REQUEST_BODY);
+    mod.taintObject(ctx, httpRequest, SourceTypes.REQUEST_BODY);
 
     return v1;
   }

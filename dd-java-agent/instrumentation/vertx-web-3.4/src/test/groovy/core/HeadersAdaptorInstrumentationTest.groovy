@@ -39,7 +39,7 @@ class HeadersAdaptorInstrumentationTest extends AgentTestRunner {
     runUnderIastTrace { headers.get('key') }
 
     then:
-    1 * module.taintIfTainted(iastCtx, 'value', headers, SourceTypes.REQUEST_HEADER_VALUE, 'key')
+    1 * module.taintObjectIfTainted(iastCtx, 'value', headers, SourceTypes.REQUEST_HEADER_VALUE, 'key')
 
     where:
     headers        | _
@@ -65,8 +65,8 @@ class HeadersAdaptorInstrumentationTest extends AgentTestRunner {
 
     then:
     1 * module.isTainted(iastCtx, headers) >> { true }
-    1 * module.taint(iastCtx, 'value1', SourceTypes.REQUEST_HEADER_VALUE, 'key')
-    1 * module.taint(iastCtx, 'value2', SourceTypes.REQUEST_HEADER_VALUE, 'key')
+    1 * module.taintString(iastCtx, 'value1', SourceTypes.REQUEST_HEADER_VALUE, 'key')
+    1 * module.taintString(iastCtx, 'value2', SourceTypes.REQUEST_HEADER_VALUE, 'key')
 
     where:
     headers        | _
@@ -92,7 +92,7 @@ class HeadersAdaptorInstrumentationTest extends AgentTestRunner {
 
     then:
     1 * module.isTainted(iastCtx, headers) >> { true }
-    1 * module.taint(iastCtx, 'key', SourceTypes.REQUEST_HEADER_NAME, 'key')
+    1 * module.taintString(iastCtx, 'key', SourceTypes.REQUEST_HEADER_NAME, 'key')
 
     where:
     headers        | _
@@ -121,10 +121,10 @@ class HeadersAdaptorInstrumentationTest extends AgentTestRunner {
     then:
     1 * module.isTainted(iastCtx, headers) >> { true }
     result.collect { it.key }.unique().each {
-      1 * module.taint(iastCtx, it, SourceTypes.REQUEST_HEADER_NAME, it)
+      1 * module.taintObject(iastCtx, it, SourceTypes.REQUEST_HEADER_NAME, it)
     }
     result.each {
-      1 * module.taint(iastCtx, it.value, SourceTypes.REQUEST_HEADER_VALUE, it.key)
+      1 * module.taintObject(iastCtx, it.value, SourceTypes.REQUEST_HEADER_VALUE, it.key)
     }
 
     where:

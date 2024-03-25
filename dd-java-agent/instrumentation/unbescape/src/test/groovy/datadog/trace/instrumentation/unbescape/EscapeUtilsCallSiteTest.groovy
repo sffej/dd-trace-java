@@ -1,17 +1,13 @@
 package datadog.trace.instrumentation.unbescape
 
-import datadog.trace.agent.test.AgentTestRunner
+import com.datadog.iast.test.IastAgentTestRunner
+import datadog.trace.api.iast.IastContext
 import datadog.trace.api.iast.InstrumentationBridge
 import datadog.trace.api.iast.VulnerabilityMarks
 import datadog.trace.api.iast.propagation.PropagationModule
 import foo.bar.TestEscapeUtilsSuite
 
-class EscapeUtilsCallSiteTest extends AgentTestRunner {
-
-  @Override
-  protected void configurePreAgent() {
-    injectSysConfig("dd.iast.enabled", "true")
-  }
+class EscapeUtilsCallSiteTest extends IastAgentTestRunner {
 
   void 'test #method'() {
     given:
@@ -19,20 +15,20 @@ class EscapeUtilsCallSiteTest extends AgentTestRunner {
     InstrumentationBridge.registerIastModule(module)
 
     when:
-    final result = TestEscapeUtilsSuite.&"$method".call(args)
+    final result = computeUnderIastTrace { TestEscapeUtilsSuite."$method"(string) }
 
     then:
     result == expected
-    1 * module.taintIfTainted(_ as String, args[0], false, VulnerabilityMarks.XSS_MARK)
+    1 * module.taintStringIfTainted(_ as IastContext, _ as String, string, false, VulnerabilityMarks.XSS_MARK)
     0 * _
 
     where:
-    method             | args                                                            | expected
-    'escapeHtml4Xml'   | ['<htmlTag>"escape this < </htmlTag>']                          | '&lt;htmlTag&gt;&quot;escape this &lt; &lt;/htmlTag&gt;'
-    'escapeHtml4'      | ['<htmlTag>"escape this < </htmlTag>']                          | '&lt;htmlTag&gt;&quot;escape this &lt; &lt;/htmlTag&gt;'
-    'escapeHtml5'      | ['<htmlTag>"escape this < </htmlTag>']                          | '&lt;htmlTag&gt;&quot;escape this &lt; &lt;/htmlTag&gt;'
-    'escapeHtml5Xml'   | ['<htmlTag>"escape this < </htmlTag>']                          | '&lt;htmlTag&gt;&quot;escape this &lt; &lt;/htmlTag&gt;'
-    'escapeJavaScript' | ['<script>function a(){console.log("escape this < ")}<script>'] | '<script>function a(){console.log(\\"escape this < \\")}<script>'
+    method             | string                                                            | expected
+    'escapeHtml4Xml'   | '<htmlTag>"escape this < </htmlTag>'                          | '&lt;htmlTag&gt;&quot;escape this &lt; &lt;/htmlTag&gt;'
+    'escapeHtml4'      | '<htmlTag>"escape this < </htmlTag>'                          | '&lt;htmlTag&gt;&quot;escape this &lt; &lt;/htmlTag&gt;'
+    'escapeHtml5'      | '<htmlTag>"escape this < </htmlTag>'                          | '&lt;htmlTag&gt;&quot;escape this &lt; &lt;/htmlTag&gt;'
+    'escapeHtml5Xml'   | '<htmlTag>"escape this < </htmlTag>'                          | '&lt;htmlTag&gt;&quot;escape this &lt; &lt;/htmlTag&gt;'
+    'escapeJavaScript' | '<script>function a(){console.log("escape this < ")}<script>' | '<script>function a(){console.log(\\"escape this < \\")}<script>'
   }
 
   void 'test #method with null args not thrown exception'() {
@@ -42,7 +38,7 @@ class EscapeUtilsCallSiteTest extends AgentTestRunner {
     InstrumentationBridge.registerIastModule(module)
 
     when:
-    TestEscapeUtilsSuite.&"$method".call(null)
+    runUnderIastTrace { TestEscapeUtilsSuite."$method"(null) }
 
     then:
     notThrown(Exception)
