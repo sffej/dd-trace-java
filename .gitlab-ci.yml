@@ -55,15 +55,16 @@ build: &build
   variables:
     BUILD_CACHE_POLICY: push
     DEPENDENCY_CACHE_POLICY: pull
+    POLICY: pull
   rules:
     - if: '$POPULATE_CACHE'
       when: never
     - when: on_success
   cache:
-    key: '$CI_SERVER_VERSION' # Dependencies cache. Reset the cache every time gitlab is upgraded.  ~Every couple months
-    paths:
-      - .gradle/wrapper
-    policy: $DEPENDENCY_CACHE_POLICY
+    - key: '$CI_SERVER_VERSION' # Dependencies cache. Reset the cache every time gitlab is upgraded.  ~Every couple months
+      paths:
+        - .gradle/wrapper
+      policy: $POLICY
   script:
     - GRADLE_OPTS="-Dorg.gradle.jvmargs='-Xmx1900M -Xms512M' -Ddatadog.forkedMaxHeapSize=512M -Ddatadog.forkedMinHeapSize=128M" ./gradlew clean :dd-java-agent:shadowJar :dd-trace-api:jar :dd-trace-ot:shadowJar --build-cache --parallel --stacktrace --no-daemon --max-workers=8
     - echo UPSTREAM_TRACER_VERSION=$(java -jar workspace/dd-java-agent/build/libs/*.jar) >> upstream.env
