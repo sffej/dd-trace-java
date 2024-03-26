@@ -54,6 +54,7 @@ build: &build
   stage: build
   variables:
     BUILD_CACHE_POLICY: push
+    DEPENDENCY_CACHE_POLICY: pull
   rules:
     - if: '$POPULATE_CACHE'
       when: never
