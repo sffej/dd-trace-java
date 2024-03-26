@@ -36,21 +36,7 @@ variables:
     key: no-cache
     policy: pull
 
-cache:
-  key: '$CI_SERVER_VERSION' # Dependencies cache. Reset the cache every time gitlab is upgraded.  ~Every couple months
-  paths:
-    # Cached dependencies and wrappers for gradle
-    - .gradle/wrapper
-    - .gradle/caches
-    # Cached dependencies for maven
-    - .m2
-    # Cached launchers and compilers for sbt
-    - .sbt
-    # Cached dependencies for sbt handled by ivy
-    - .ivy2
-    # Cached dependencies for sbt handled by coursier
-    - .cache/coursier
-  policy: '$DEPENDENCY_CACHE_POLICY'
+
 #  - key: $CI_PIPELINE_ID # Incremental build cache. Shared by all jobs in the pipeline
 #    paths:
 #      - .gradle/caches/8.4 # must match gradle-wrapper.properties
@@ -72,6 +58,21 @@ build: &build
     - if: '$POPULATE_CACHE'
       when: never
     - when: on_success
+  cache:
+    key: '$CI_SERVER_VERSION' # Dependencies cache. Reset the cache every time gitlab is upgraded.  ~Every couple months
+    paths:
+      # Cached dependencies and wrappers for gradle
+      - .gradle/wrapper
+      - .gradle/caches
+      # Cached dependencies for maven
+      - .m2
+      # Cached launchers and compilers for sbt
+      - .sbt
+      # Cached dependencies for sbt handled by ivy
+      - .ivy2
+      # Cached dependencies for sbt handled by coursier
+      - .cache/coursier
+    policy: $DEPENDENCY_CACHE_POLICY
   script:
     - GRADLE_OPTS="-Dorg.gradle.jvmargs='-Xmx1900M -Xms512M' -Ddatadog.forkedMaxHeapSize=512M -Ddatadog.forkedMinHeapSize=128M" ./gradlew clean :dd-java-agent:shadowJar :dd-trace-api:jar :dd-trace-ot:shadowJar --build-cache --parallel --stacktrace --no-daemon --max-workers=8
     - echo UPSTREAM_TRACER_VERSION=$(java -jar workspace/dd-java-agent/build/libs/*.jar) >> upstream.env
