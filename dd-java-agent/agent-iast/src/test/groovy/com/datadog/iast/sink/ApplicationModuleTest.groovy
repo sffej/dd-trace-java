@@ -66,7 +66,8 @@ class ApplicationModuleTest extends IastModuleImplTestBase {
     'report'         | 'application/directorylistingleak/secure'         | null                        | null                                                       | _
     'report'         | 'application/directorylistingleak/insecure'       | DIRECTORY_LISTING_LEAK      | 'Directory listings configured'                            | 14
     'noDedupReport'  | 'application/adminconsoleactive/secure'           | null                        | null                                                       | _
-    'noDedupReport'  | 'application/adminconsoleactive/insecure'         | ADMIN_CONSOLE_ACTIVE        | 'Tomcat Manager Application'                               | NO_LINE
+    'noDedupReport'  | 'application/adminconsoleactive/insecure/tomcat/manager'         | ADMIN_CONSOLE_ACTIVE        | ApplicationModuleImpl.TOMCAT_MANAGER_APP                    | NO_LINE
+    'noDedupReport'  | 'application/adminconsoleactive/insecure/tomcat/host'            | ADMIN_CONSOLE_ACTIVE        | ApplicationModuleImpl.TOMCAT_HOST_MANAGER_APP               | NO_LINE
     'report'         | 'application/defaulthtmlescapeinvalid/secure'     | null                        | null                                                       | _
     'report'         | 'application/defaulthtmlescapeinvalid/secure_tag' | null                        | null                                                       | _
     'report'         | 'application/defaulthtmlescapeinvalid/false_tag'  | DEFAULT_HTML_ESCAPE_INVALID | 'defaultHtmlEscape tag should be true'                     | 8
