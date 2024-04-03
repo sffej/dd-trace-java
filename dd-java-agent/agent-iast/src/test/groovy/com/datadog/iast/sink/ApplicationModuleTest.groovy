@@ -64,7 +64,10 @@ class ApplicationModuleTest extends IastModuleImplTestBase {
     'report'         | 'application/sessiontimeout/secure'               | null                        | null                                                       | _
     'report'         | 'application/sessiontimeout/insecure'             | SESSION_TIMEOUT             | 'Found vulnerable timeout value: 80'                       | 7
     'report'         | 'application/directorylistingleak/secure'         | null                        | null                                                       | _
-    'report'         | 'application/directorylistingleak/insecure'       | DIRECTORY_LISTING_LEAK      | 'Directory listings configured'                            | 14
+    'report'         | 'application/directorylistingleak/insecure/tomcat'| DIRECTORY_LISTING_LEAK      | 'Directory listings configured'                            | 14
+    'report'         | 'application/directorylistingleak/insecure/weblogic'     | DIRECTORY_LISTING_LEAK      | 'Directory listings configured'                             | 17
+    'report'         | 'application/directorylistingleak/insecure/websphere/xmi'        | DIRECTORY_LISTING_LEAK      | 'Directory listings configured'                             | 1
+    'report'         | 'application/directorylistingleak/insecure/websphere/xml'        | DIRECTORY_LISTING_LEAK      | 'Directory listings configured'                             | 10
     'noDedupReport'  | 'application/adminconsoleactive/secure'           | null                        | null                                                       | _
     'noDedupReport'  | 'application/adminconsoleactive/insecure/tomcat/manager'         | ADMIN_CONSOLE_ACTIVE        | ApplicationModuleImpl.TOMCAT_MANAGER_APP                    | NO_LINE
     'noDedupReport'  | 'application/adminconsoleactive/insecure/tomcat/host'            | ADMIN_CONSOLE_ACTIVE        | ApplicationModuleImpl.TOMCAT_HOST_MANAGER_APP               | NO_LINE
