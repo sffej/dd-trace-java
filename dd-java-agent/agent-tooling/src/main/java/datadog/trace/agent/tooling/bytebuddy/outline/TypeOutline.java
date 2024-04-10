@@ -31,6 +31,7 @@ final class TypeOutline extends WithName {
   private final String superName;
   private final String[] interfaces;
   private String declaringName;
+  private String enclosingName;
 
   private List<AnnotationDescription> declaredAnnotations;
 
@@ -80,7 +81,10 @@ final class TypeOutline extends WithName {
 
   @Override
   public TypeDescription getEnclosingType() {
-    return getDeclaringType(); // equivalent for outline purposes
+    if (null != enclosingName) {
+      return findType(enclosingName.replace('/', '.'));
+    }
+    return getDeclaringType();
   }
 
   @Override
@@ -112,6 +116,10 @@ final class TypeOutline extends WithName {
 
   void declaredBy(String declaringName) {
     this.declaringName = declaringName;
+  }
+
+  void enclosedBy(String enclosingName) {
+    this.enclosingName = enclosingName;
   }
 
   void declare(AnnotationDescription annotation) {

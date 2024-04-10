@@ -23,6 +23,8 @@ public final class InstrumenterMetrics {
     static final AtomicLong narrowLocationMiss = new AtomicLong();
     static final AtomicLong narrowTypeHit = new AtomicLong();
     static final AtomicLong narrowTypeMiss = new AtomicLong();
+    static final AtomicLong loadedTypeHit = new AtomicLong();
+    static final AtomicLong loadedTypeMiss = new AtomicLong();
     static final AtomicLong buildTypeMemo = new AtomicLong();
     static final AtomicLong reuseTypeMemo = new AtomicLong();
     static final AtomicLong buildTypeOutline = new AtomicLong();
@@ -131,6 +133,18 @@ public final class InstrumenterMetrics {
     }
   }
 
+  public static void loadedTypeHit(long fromTick) {
+    if (ENABLED) {
+      record(Stats.loadedTypeHit, fromTick);
+    }
+  }
+
+  public static void loadedTypeMiss(long fromTick) {
+    if (ENABLED) {
+      record(Stats.loadedTypeMiss, fromTick);
+    }
+  }
+
   public static void buildTypeMemo(long fromTick) {
     if (ENABLED) {
       record(Stats.buildTypeMemo, fromTick);
@@ -188,6 +202,8 @@ public final class InstrumenterMetrics {
     summarize(buf, "Narrow location miss:  ", Stats.narrowLocationMiss);
     summarize(buf, "Narrow type hit:       ", Stats.narrowTypeHit);
     summarize(buf, "Narrow type miss:      ", Stats.narrowTypeMiss);
+    summarize(buf, "Loaded type hit:       ", Stats.loadedTypeHit);
+    summarize(buf, "Loaded type miss:      ", Stats.loadedTypeMiss);
     buf.append("----------------------------------------------------------------\n");
     summarize(buf, "Build type-memo:       ", Stats.buildTypeMemo);
     summarize(buf, "Reuse type-memo:       ", Stats.reuseTypeMemo);

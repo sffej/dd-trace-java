@@ -166,4 +166,31 @@ abstract class MatchRecorder {
       }
     }
   }
+
+  /** Selects types based on the actual loaded state of the class. */
+  static final class LoadedType extends MatchRecorder {
+    private final ElementMatcher<Class<?>> matcher;
+
+    LoadedType(int id, ElementMatcher<Class<?>> matcher) {
+      super(id);
+      this.matcher = matcher;
+    }
+
+    @Override
+    public void record(
+        TypeDescription type,
+        ClassLoader classLoader,
+        Class<?> classBeingRedefined,
+        BitSet matches) {
+      if (matches.get(id)) {
+        long fromTick = InstrumenterMetrics.tick();
+        if (!matcher.matches(classBeingRedefined)) {
+          InstrumenterMetrics.loadedTypeMiss(fromTick);
+          matches.clear(id);
+        } else {
+          InstrumenterMetrics.loadedTypeHit(fromTick);
+        }
+      }
+    }
+  }
 }

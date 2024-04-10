@@ -173,9 +173,12 @@ public final class CombiningTransformerBuilder
       matchers.add(
           new MatchRecorder.ForHierarchy(transformationId, (Instrumenter.ForTypeHierarchy) member));
     } else if (member instanceof Instrumenter.ForCallSite) {
-      matchers.add(
-          new MatchRecorder.ForType(
-              transformationId, ((Instrumenter.ForCallSite) member).callerType()));
+      Instrumenter.ForCallSite callSite = (Instrumenter.ForCallSite) member;
+      matchers.add(new MatchRecorder.ForType(transformationId, callSite.callerType()));
+      final ElementMatcher<Class<?>> loadedTypeMatcher = callSite.loadedTypeMatcher();
+      if (loadedTypeMatcher != null) {
+        matchers.add(new MatchRecorder.LoadedType(transformationId, loadedTypeMatcher));
+      }
     }
 
     if (member instanceof Instrumenter.ForConfiguredTypes) {

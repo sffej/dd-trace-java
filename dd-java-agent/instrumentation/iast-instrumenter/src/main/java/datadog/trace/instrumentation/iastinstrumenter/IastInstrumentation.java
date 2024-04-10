@@ -26,7 +26,12 @@ public class IastInstrumentation extends CallSiteInstrumentation {
 
   @Override
   public ElementMatcher<TypeDescription> callerType() {
-    return IastMatcher.INSTANCE;
+    return IastMatchers.TYPE_INSTANCE;
+  }
+
+  @Override
+  public ElementMatcher<Class<?>> loadedTypeMatcher() {
+    return IastMatchers.LOADED_TYPE_INSTANCE;
   }
 
   @Override
@@ -54,14 +59,38 @@ public class IastInstrumentation extends CallSiteInstrumentation {
     return false;
   }
 
-  public static final class IastMatcher
-      extends ElementMatcher.Junction.ForNonNullValues<TypeDescription> {
-    public static final IastMatcher INSTANCE = new IastMatcher();
+  public static final class IastMatchers {
+    private static final ElementMatcher.Junction<TypeDescription> TRIE_BASED_MATCHER =
+        new ElementMatcher.Junction.ForNonNullValues<TypeDescription>() {
+          @Override
+          protected boolean doMatch(TypeDescription target) {
+            return IastExclusionTrie.apply(target.getName()) != 1;
+          }
+        };
 
-    @Override
-    protected boolean doMatch(TypeDescription target) {
-      return IastExclusionTrie.apply(target.getName()) != 1;
-    }
+    private static final ElementMatcher.Junction<TypeDescription> IGNORE_ENCLOSED =
+        new ElementMatcher.Junction.ForNonNullValues<TypeDescription>() {
+          @Override
+          protected boolean doMatch(TypeDescription target) {
+            return target.getEnclosingType() == target.getDeclaringType();
+          }
+        };
+
+    public static final ElementMatcher<TypeDescription> TYPE_INSTANCE =
+        Config.get().isIastEnclosedClassEnabled()
+            ? TRIE_BASED_MATCHER
+            : IGNORE_ENCLOSED.and(TRIE_BASED_MATCHER);
+
+    public static final ElementMatcher<Class<?>> LOADED_TYPE_INSTANCE =
+        new ElementMatcher.Junction.AbstractBase<Class<?>>() {
+          @Override
+          public boolean matches(final Class<?> target) {
+            if (target == null) {
+              return true;
+            }
+            return target.getEnclosingClass() == target.getDeclaringClass();
+          }
+        };
   }
 
   public static class IastCallSiteSupplier implements CallSiteSupplier {

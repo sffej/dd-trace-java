@@ -70,6 +70,11 @@ public interface Instrumenter {
   /** Instrumentation that matches based on the caller of an instruction. */
   interface ForCallSite {
     ElementMatcher<TypeDescription> callerType();
+
+    /** Additional type checks after type matching for already loaded classes. */
+    default ElementMatcher<Class<?>> loadedTypeMatcher() {
+      return null;
+    }
   }
 
   /** Instrumentation that can optionally widen matching to consider the type hierarchy. */

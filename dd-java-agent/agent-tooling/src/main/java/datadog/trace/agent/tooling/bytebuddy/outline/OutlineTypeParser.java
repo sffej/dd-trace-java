@@ -115,6 +115,13 @@ final class OutlineTypeParser implements TypeParser {
     }
 
     @Override
+    public void visitOuterClass(String owner, String methodName, String methodDescriptor) {
+      if (null != owner) {
+        typeOutline.enclosedBy(owner);
+      }
+    }
+
+    @Override
     public AnnotationVisitor visitAnnotation(String descriptor, boolean visible) {
       typeOutline.declare(annotationOutline(descriptor));
       return null;
